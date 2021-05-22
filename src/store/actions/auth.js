@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { AUTH_LOGOUT, AUTH_SUCCESS } from './actionTypes';
+import { AUTH_LOGOUT, AUTH_SUCCESS, AUTH_ERROR, RESET_AUTH_ERROR } from './actionTypes';
 
 export function auth(email, password, isLogin) {
     return async dispatch => {
@@ -9,22 +9,36 @@ export function auth(email, password, isLogin) {
             returnSecureToken: true
         }
 
-        let url =' https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=AIzaSyC4QfpruhmMY7UM8Nwi0FJR1DAHwz8UA1U';
+        let url ='https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=AIzaSyC4QfpruhmMY7UM8Nwi0FJR1DAHwz8UA1U';
 
         if (isLogin) {
             url = 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyC4QfpruhmMY7UM8Nwi0FJR1DAHwz8UA1U';
         }
-        const response = await axios.post(url, authData);
-        const data = response.data;
+                
+            try {
+                const response = await axios.post(url, authData)
+                const data = response.data;
+        
+                const expirationDate = new Date(new Date().getTime() + data.expiresIn * 1000);
+        
+                localStorage.setItem('token', data.idToken);
+                localStorage.setItem('userId', data.localId);
+                localStorage.setItem('expirationDate', expirationDate);
+        
+                dispatch(authSuccess(data.idToken));
+                dispatch(autoLogout(data.expiresIn)) 
+            } catch (error) {
+                const errorMessage = error.response.data.error.message;
+                if (errorMessage === 'EMAIL_NOT_FOUND') {
+                    dispatch(authError('Email не найден'))
+                } else if (errorMessage === 'INVALID_PASSWORD') {
+                    dispatch(authError('Неверный пароль'))
+                } else {
+                    dispatch(authError('Ошибка авторизации, попробуйте позже'))
+                }
+            }
 
-        const expirationDate = new Date(new Date().getTime() + data.expiresIn * 1000);
-
-        localStorage.setItem('token', data.idToken);
-        localStorage.setItem('userId', data.localId);
-        localStorage.setItem('expirationDate', expirationDate);
-
-        dispatch(authSuccess(data.idToken));
-        dispatch(autoLogout(data.expiresIn))
+       
 
     };
 };
@@ -35,6 +49,19 @@ export function authSuccess(token) {
         token
     };
 };
+
+export function authError(error) {
+    return {
+        type: AUTH_ERROR,
+        error
+    };
+};
+
+export function resetAuthError() {
+    return {
+        type: RESET_AUTH_ERROR
+    }
+}
 
 export function autoLogout(time) {
     return dispatch => {

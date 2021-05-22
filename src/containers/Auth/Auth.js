@@ -3,7 +3,7 @@ import Button from '../../components/UI/Button/Button';
 import Input from '../../components/UI/Input/Input';
 import classes from './Auth.css';
 import { connect } from 'react-redux';
-import { auth } from '../../store/actions/auth';
+import { auth, resetAuthError } from '../../store/actions/auth';
 
 function validateEmail(email) {
     const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
@@ -85,6 +85,9 @@ class Auth extends React.Component {
     };
 
     onChangeHandler = (e, controlName) => {
+        if(this.props.error) {
+            this.props.resetError()
+        }
         const formControls = {...this.state.formControls};
         const control = {...formControls[controlName]};
 
@@ -133,7 +136,7 @@ class Auth extends React.Component {
                     <form onSubmit={e => this.submitHandler(e)} className={classes.AuthForm}>
       
                         {this.renderInputs()}
-
+                        {this.props.error && <span className={classes.ErrorAuth}>{this.props.error}</span>}
                         <Button 
                             type='success'
                             onClick={this.loginHandler}
@@ -155,8 +158,15 @@ class Auth extends React.Component {
 
 function mapDispatchToProps(dispatch) {
     return {
-        auth: (email, password, isLogin) => dispatch(auth(email, password, isLogin))
+        auth: (email, password, isLogin) => dispatch(auth(email, password, isLogin)),
+        resetError: () => dispatch(resetAuthError())
     }
 };
 
-export default connect(null, mapDispatchToProps)(Auth)
+function mapStateToPros(state) {
+    return {
+        error: state.auth.errorMessage
+    };
+};
+
+export default connect(mapStateToPros, mapDispatchToProps)(Auth)
